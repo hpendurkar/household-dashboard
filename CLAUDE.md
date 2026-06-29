@@ -2,6 +2,30 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git Workflow
+
+This project uses **GitHub Flow**:
+
+- `master` is the stable branch and the GitHub Pages deployment source — never commit directly to it
+- All work happens on a short-lived feature branch cut from `master`
+- Feature branches are pushed to `origin` and merged into `master` via a pull request
+- `master` has branch protection enabled: direct pushes are blocked, a PR is required to merge
+
+**Typical workflow:**
+
+```bash
+git checkout master && git pull          # start from latest stable
+git checkout -b feature/my-feature      # create feature branch
+# ... make changes, commit ...
+git push -u origin feature/my-feature   # push branch to GitHub
+gh pr create --base master              # open PR via GitHub CLI
+# review, then merge PR on GitHub — master auto-deploys via GitHub Pages
+git checkout master && git pull         # sync local master after merge
+git branch -d feature/my-feature       # clean up local branch
+```
+
+Branch naming convention: `feature/<short-description>` (e.g. `feature/task-editing`, `feature/milestone-dates`).
+
 ## Running the App
 
 **No build step.** Open `index.html` directly in a browser, or serve the folder with:
