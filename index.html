@@ -23,25 +23,16 @@
         <div class="logo-icon">H</div>
         <div class="brand-title">
           <h1>Household Dashboard</h1>
-          <p>Personal, Medical & Work Task Tracker</p>
+          <p>Household Task Tracker</p>
         </div>
       </div>
       
       <div class="header-actions">
-        <!-- Load Sample Data Button -->
-        <button id="load-sample-btn" class="btn btn-secondary">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-          Load Demo Tasks
+        <!-- Refresh Button -->
+        <button id="refresh-btn" class="btn btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Refresh
         </button>
-
-        <!-- CSV Upload Wrapper -->
-        <div class="file-input-wrapper">
-          <button class="btn btn-primary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-            Upload Tasks CSV
-          </button>
-          <input type="file" id="csv-file-input" accept=".csv" />
-        </div>
 
         <!-- Dark/Light Theme Toggle -->
         <button id="theme-toggle-btn" class="btn-icon" aria-label="Toggle Dark Mode">
@@ -141,12 +132,10 @@
           </select>
         </div>
 
-        <!-- Milestone Filter -->
+        <!-- Milestone Filter (populated dynamically from sheet) -->
         <div class="select-wrapper">
           <select id="milestone-filter" class="filter-select">
             <option value="all">All Milestones</option>
-            <option value="Seattle Trip">Seattle Trip</option>
-            <option value="Sedona Trip">Sedona Trip</option>
           </select>
         </div>
 
@@ -232,11 +221,11 @@
         </div>
       </div>
 
-      <!-- EMPTY STATE -->
+      <!-- EMPTY STATE (also used for loading and error) -->
       <div id="empty-state-panel" class="empty-state glass-panel" style="display:none;">
-        <div class="empty-state-icon">📋</div>
-        <h3 class="empty-state-title">No tasks found</h3>
-        <p class="empty-state-text">Try uploading a tasks CSV file or loading the demo tasks to populate your dashboard.</p>
+        <div id="empty-state-icon" class="empty-state-icon">⏳</div>
+        <h3 id="empty-state-title" class="empty-state-title">Loading tasks…</h3>
+        <p id="empty-state-text" class="empty-state-text">Fetching data from Google Sheets.</p>
       </div>
 
     </main>

@@ -2,11 +2,17 @@
  * Household Tasks Dashboard - Core Application Logic
  */
 
-// Application State
+// --- Google Sheets Config ---
+const SHEET_ID = '18n_93cw2RA-8-h79nKVnzeEhu-dndUp6V3FycuGjVrY';
+const TASKS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
+const MILESTONES_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=23811170`;
+
+// --- Application State ---
 let appState = {
   tasks: [],
   filteredTasks: [],
-  currentView: 'grid', // 'grid' or 'kanban'
+  milestones: {},   // { 'Seattle Trip': 'Jul 4, 2026', ... }
+  currentView: 'grid',
   activeFilters: {
     search: '',
     category: 'all',
@@ -19,7 +25,7 @@ let appState = {
   theme: 'light'
 };
 
-// Default Column Indices (in case CSV headers can't be mapped)
+// Default Column Indices
 let columnMapping = {
   id: -1,
   title: 0,
@@ -34,11 +40,11 @@ let columnMapping = {
   notes: 9
 };
 
-// Initialize Application on Page Load
+// --- Init ---
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   initEventListeners();
-  loadInitialData();
+  loadSheetData();
 });
 
 // --- Theme Management ---
@@ -60,7 +66,6 @@ function toggleTheme() {
 function updateThemeIcon() {
   const sunIcon = document.querySelector('.sun-icon');
   const moonIcon = document.querySelector('.moon-icon');
-
   if (appState.theme === 'dark') {
     sunIcon.style.display = 'block';
     moonIcon.style.display = 'none';
@@ -73,8 +78,7 @@ function updateThemeIcon() {
 // --- Event Listeners ---
 function initEventListeners() {
   document.getElementById('theme-toggle-btn').addEventListener('click', toggleTheme);
-  document.getElementById('csv-file-input').addEventListener('change', handleFileUpload);
-  document.getElementById('load-sample-btn').addEventListener('click', loadDemoData);
+  document.getElementById('refresh-btn').addEventListener('click', loadSheetData);
 
   document.getElementById('search-input').addEventListener('input', (e) => {
     appState.activeFilters.search = e.target.value;
@@ -112,7 +116,6 @@ function initEventListeners() {
   });
 
   document.getElementById('clear-filters-btn').addEventListener('click', clearFilters);
-
   document.getElementById('view-grid-btn').addEventListener('click', () => switchView('grid'));
   document.getElementById('view-kanban-btn').addEventListener('click', () => switchView('kanban'));
 
@@ -120,7 +123,6 @@ function initEventListeners() {
   document.getElementById('task-modal').addEventListener('click', (e) => {
     if (e.target.id === 'task-modal') closeModal();
   });
-
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
   });
@@ -128,11 +130,106 @@ function initEventListeners() {
   setupKanbanDragAndDrop();
 }
 
+// --- Google Sheets Data Fetch ---
+async function loadSheetData() {
+  showLoadingState();
+  try {
+    const [tasksRes, milestonesRes] = await Promise.all([
+      fetch(TASKS_URL),
+      fetch(MILESTONES_URL)
+    ]);
+
+    if (!tasksRes.ok) throw new Error(`Tasks sheet returned HTTP ${tasksRes.status}.`);
+    if (!milestonesRes.ok) throw new Error(`Milestones sheet returned HTTP ${milestonesRes.status}.`);
+
+    const [tasksCsv, milestonesCsv] = await Promise.all([
+      tasksRes.text(),
+      milestonesRes.text()
+    ]);
+
+    // Detect auth redirect (sheet is private)
+    if (isHtml(tasksCsv)) throw new Error('Tasks sheet is not publicly accessible.');
+    if (isHtml(milestonesCsv)) throw new Error('Milestones sheet is not publicly accessible.');
+
+    appState.milestones = parseMilestonesCSV(milestonesCsv);
+    populateMilestoneFilter();
+
+    const lines = parseCSV(tasksCsv);
+    appState.tasks = processTasksFromCSV(lines);
+
+    filterAndRender();
+  } catch (err) {
+    showErrorState(err.message);
+  }
+}
+
+function isHtml(text) {
+  const t = text.trimStart().toLowerCase();
+  return t.startsWith('<!doctype') || t.startsWith('<html');
+}
+
+// --- Milestone Sheet Parsing ---
+function parseMilestonesCSV(csvText) {
+  const lines = parseCSV(csvText);
+  if (lines.length < 2) return {};
+
+  const headers = lines[0];
+  const nameCol = headers.findIndex(h => /milestone/i.test(h.trim()));
+  const dateCol = headers.findIndex(h => /date/i.test(h.trim()));
+
+  if (nameCol === -1) return {};
+
+  const result = {};
+  for (let i = 1; i < lines.length; i++) {
+    const row = lines[i];
+    const name = row[nameCol] ? row[nameCol].trim() : '';
+    if (!name) continue;
+    const date = (dateCol !== -1 && row[dateCol]) ? row[dateCol].trim() : '';
+    result[name] = date;
+  }
+  return result;
+}
+
+function populateMilestoneFilter() {
+  const select = document.getElementById('milestone-filter');
+  const current = select.value;
+  select.innerHTML = '<option value="all">All Milestones</option>';
+  Object.entries(appState.milestones).forEach(([name, date]) => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = date ? `${name} (${date})` : name;
+    select.appendChild(opt);
+  });
+  // Restore prior selection if it still exists
+  if ([...select.options].some(o => o.value === current)) select.value = current;
+}
+
+// --- Loading / Error States ---
+function showLoadingState() {
+  document.getElementById('tasks-grid-container').innerHTML = '';
+  ['kanban-wrapper-todo', 'kanban-wrapper-progress', 'kanban-wrapper-done'].forEach(id => {
+    document.getElementById(id).innerHTML = '';
+  });
+  const panel = document.getElementById('empty-state-panel');
+  panel.style.display = 'flex';
+  document.getElementById('empty-state-icon').textContent = '⏳';
+  document.getElementById('empty-state-title').textContent = 'Loading tasks…';
+  document.getElementById('empty-state-text').textContent = 'Fetching data from Google Sheets.';
+}
+
+function showErrorState(message) {
+  const panel = document.getElementById('empty-state-panel');
+  panel.style.display = 'flex';
+  document.getElementById('empty-state-icon').textContent = '⚠️';
+  document.getElementById('empty-state-title').textContent = 'Could not load tasks';
+  document.getElementById('empty-state-text').textContent =
+    `${message} Make sure the sheet is shared as "Anyone with the link can view".`;
+}
+
 // --- CSV Parsing Engine ---
-// Robust CSV Parser that handles commas inside quotes and newline characters correctly.
 function parseCSV(text) {
   const lines = [];
-  let row = [""];
+  let row = [''];
   let insideQuote = false;
 
   for (let i = 0; i < text.length; i++) {
@@ -147,26 +244,20 @@ function parseCSV(text) {
         insideQuote = !insideQuote;
       }
     } else if (char === ',' && !insideQuote) {
-      row.push("");
+      row.push('');
     } else if ((char === '\r' || char === '\n') && !insideQuote) {
-      if (char === '\r' && nextChar === '\n') {
-        i++;
-      }
+      if (char === '\r' && nextChar === '\n') i++;
       lines.push(row);
-      row = [""];
+      row = [''];
     } else {
       row[row.length - 1] += char;
     }
   }
 
-  if (row.length > 1 || row[0] !== "") {
-    lines.push(row);
-  }
-
+  if (row.length > 1 || row[0] !== '') lines.push(row);
   return lines;
 }
 
-// Map CSV columns using header heuristics
 function mapHeaders(headers) {
   const findColumn = (regexList) => {
     for (const regex of regexList) {
@@ -176,25 +267,23 @@ function mapHeaders(headers) {
     return -1;
   };
 
-  columnMapping.id         = findColumn([/^id$/i]);
-  columnMapping.title      = findColumn([/task.*desc/i, /description/i, /task/i, /title/i, /name/i, /summary/i, /subject/i, /activity/i]);
-  columnMapping.category   = findColumn([/^cat/i, /^type/i, /^group/i, /^area/i, /^label/i]);
+  columnMapping.id          = findColumn([/^id$/i]);
+  columnMapping.title       = findColumn([/task.*desc/i, /description/i, /task/i, /title/i, /name/i, /summary/i, /subject/i, /activity/i]);
+  columnMapping.category    = findColumn([/^cat/i, /^type/i, /^group/i, /^area/i, /^label/i]);
   columnMapping.subCategory = findColumn([/sub.?cat/i, /sub.?type/i]);
-  columnMapping.owner      = findColumn([/owner/i, /bearer/i, /assigned/i, /person/i]);
-  columnMapping.dateSet    = findColumn([/date.?set/i, /set.?date/i, /date.?start/i, /created/i]);
-  columnMapping.status     = findColumn([/^status$/i, /^state$/i, /^stage$/i]);
-  columnMapping.priority   = findColumn([/prior/i, /import/i, /urg/i, /^level/i]);
-  columnMapping.milestone  = findColumn([/milestone/i, /goal/i, /sprint/i, /phase/i]);
+  columnMapping.owner       = findColumn([/owner/i, /bearer/i, /assigned/i, /person/i]);
+  columnMapping.dateSet     = findColumn([/date.?set/i, /set.?date/i, /date.?start/i, /created/i]);
+  columnMapping.status      = findColumn([/^status$/i, /^state$/i, /^stage$/i]);
+  columnMapping.priority    = findColumn([/prior/i, /import/i, /urg/i, /^level/i]);
+  columnMapping.milestone   = findColumn([/milestone/i, /goal/i, /sprint/i, /phase/i]);
   columnMapping.dateCompleted = findColumn([/date.?comp/i, /comp.*date/i, /finish/i, /end.?date/i]);
-  columnMapping.notes      = findColumn([/note/i, /comment/i, /remark/i, /extra/i]);
+  columnMapping.notes       = findColumn([/note/i, /comment/i, /remark/i, /extra/i]);
 
-  // Fallback defaults if not found
-  if (columnMapping.title === -1)     columnMapping.title = 0;
-  if (columnMapping.category === -1)  columnMapping.category = 1 < headers.length ? 1 : 0;
-  if (columnMapping.status === -1)    columnMapping.status = 2 < headers.length ? 2 : 0;
+  if (columnMapping.title === -1)    columnMapping.title = 0;
+  if (columnMapping.category === -1) columnMapping.category = 1 < headers.length ? 1 : 0;
+  if (columnMapping.status === -1)   columnMapping.status = 2 < headers.length ? 2 : 0;
 }
 
-// Convert parsed CSV lines to normalized task objects
 function processTasksFromCSV(lines) {
   if (lines.length < 2) return [];
 
@@ -202,63 +291,59 @@ function processTasksFromCSV(lines) {
   mapHeaders(headers);
 
   const tasks = [];
+  const get = (row, col) => (col !== -1 && row[col]) ? row[col].trim() : '';
 
   for (let i = 1; i < lines.length; i++) {
     const row = lines[i];
     if (row.length === 0 || (row.length === 1 && row[0].trim() === '')) continue;
 
-    const rawTitle = (columnMapping.title !== -1 && row[columnMapping.title]) ? row[columnMapping.title] : '';
-    if (!rawTitle.trim()) continue;
+    const rawTitle = get(row, columnMapping.title);
+    if (!rawTitle) continue;
 
-    const get = (col) => (col !== -1 && row[col]) ? row[col].trim() : '';
-
-    const rawCategory    = get(columnMapping.category);
-    const rawSubCategory = get(columnMapping.subCategory);
-    const rawOwner       = get(columnMapping.owner);
-    const rawDateSet     = get(columnMapping.dateSet);
-    const rawStatus      = get(columnMapping.status);
-    const rawPriority    = get(columnMapping.priority);
-    const rawMilestone   = get(columnMapping.milestone);
-    const rawDateComp    = get(columnMapping.dateCompleted);
-    const rawNotes       = get(columnMapping.notes);
+    const rawCategory    = get(row, columnMapping.category);
+    const rawSubCategory = get(row, columnMapping.subCategory);
+    const rawOwner       = get(row, columnMapping.owner);
+    const rawDateSet     = get(row, columnMapping.dateSet);
+    const rawStatus      = get(row, columnMapping.status);
+    const rawPriority    = get(row, columnMapping.priority);
+    const rawMilestone   = get(row, columnMapping.milestone);
+    const rawDateComp    = get(row, columnMapping.dateCompleted);
+    const rawNotes       = get(row, columnMapping.notes);
 
     // Normalize Category
     let category = 'Other';
-    if (/house/i.test(rawCategory))                                          category = 'House';
-    else if (/personal/i.test(rawCategory))                                  category = 'Personal';
-    else if (/med/i.test(rawCategory) || /health/i.test(rawCategory))        category = 'Medical';
-    else if (/work/i.test(rawCategory) || /job/i.test(rawCategory))          category = 'Work';
+    if (/house/i.test(rawCategory))                                   category = 'House';
+    else if (/personal/i.test(rawCategory))                           category = 'Personal';
+    else if (/med/i.test(rawCategory) || /health/i.test(rawCategory)) category = 'Medical';
+    else if (/work/i.test(rawCategory) || /job/i.test(rawCategory))   category = 'Work';
 
     // Normalize Status
     let status = 'To Do';
-    if (/not.?start/i.test(rawStatus))                                              status = 'To Do';
-    else if (/done/i.test(rawStatus) || /comp/i.test(rawStatus) || /finish/i.test(rawStatus)) status = 'Completed';
+    if (/not.?start/i.test(rawStatus))                                                          status = 'To Do';
+    else if (/done/i.test(rawStatus) || /comp/i.test(rawStatus) || /finish/i.test(rawStatus))  status = 'Completed';
     else if (/progress/i.test(rawStatus) || /doing/i.test(rawStatus) || /active/i.test(rawStatus)) status = 'In Progress';
-
-    // If Date Completed is filled, treat as Completed regardless of Status column
     if (rawDateComp) status = 'Completed';
 
     // Parse Date Set
-    let parsedDateSet = null;
+    let parsedDateSet = rawDateSet;
     if (rawDateSet) {
-      const dateObj = new Date(rawDateSet);
-      parsedDateSet = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : rawDateSet;
+      const d = new Date(rawDateSet);
+      if (!isNaN(d.getTime())) {
+        parsedDateSet = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
     }
 
-    const taskId = `task-${i}-${Date.now()}`;
-
     tasks.push({
-      id: taskId,
-      title: rawTitle.trim(),
+      id: `task-${i}-${Date.now()}`,
+      title: rawTitle,
       category,
       subCategory: rawSubCategory,
       owner: rawOwner,
-      dateSet: parsedDateSet || rawDateSet,
+      dateSet: parsedDateSet,
       status,
       priority: rawPriority,
       milestone: rawMilestone,
       dateCompleted: rawDateComp,
-      description: '',
       notes: rawNotes
     });
   }
@@ -266,88 +351,13 @@ function processTasksFromCSV(lines) {
   return tasks;
 }
 
-// --- Data Loading ---
-function loadInitialData() {
-  const storedTasks = localStorage.getItem('household_tasks');
-  if (storedTasks) {
-    try {
-      const tasks = JSON.parse(storedTasks);
-      // If tasks are in the old format (no 'owner' field), discard and reload fresh demo data
-      if (tasks.length > 0 && tasks[0].owner === undefined) {
-        loadDemoData();
-        return;
-      }
-      appState.tasks = tasks;
-      filterAndRender();
-      return;
-    } catch (e) {
-      console.error("Error parsing stored tasks, falling back.", e);
-    }
-  }
-  loadDemoData();
-}
-
-function loadDemoData() {
-  const demoCSV = `ID,Category,SubCategory,Task Description,Owner,Date Set,Status,Priority,Milestone,Date Completed,Comments
-1,House,Plumbing,Contact plumber,Minu,"June 10, 2026",Not Started,P0,Seattle Trip,,
-2,House,Plumbing,Replace angle stops under kitchen and guest bathroom 1,Minu,"June 10, 2026",Not Started,P1,Seattle Trip,,
-3,House,Plumbing,Reseat master bathroom toilet,Minu,"June 10, 2026",Not Started,P1,Seattle Trip,,
-4,House,Plumbing,Replace exterior hose bib,Minu,"June 10, 2026",Not Started,P1,Seattle Trip,,
-5,House,Plumbing,Fix irrigation valve,Minu,"June 10, 2026",Not Started,P1,Seattle Trip,,
-6,House,Plumbing,Seal air gap under kitchen sink,Minu,"June 10, 2026",Not Started,P1,Seattle Trip,,
-7,Personal,Electronics,Buy windows laptop,Minu,"June 1, 2026",In Progress,P1,Seattle Trip,,
-8,House,Electrical,Contact electrician on Thumbtack,Hrishi,"May 1, 2026",Not Started,P0,Seattle Trip,,
-9,House,Electrical,Replace manual light switches with Wi-Fi controlled automated switches,Hrishi,"May 1, 2026",Not Started,P1,Sedona Trip,,
-10,House,Handywork,Contact Tilek,Hrishi,"April 1, 2026",Not Started,P0,Seattle Trip,,
-11,House,Handywork,Replace curtain rods in living room,Hrishi,"April 1, 2026",Not Started,P1,Sedona Trip,,
-12,House,Handywork,Restain main door,Hrishi,"April 1, 2026",Not Started,P1,Sedona Trip,,
-13,House,Handywork,Replace mailbox,Hrishi,"April 1, 2026",Not Started,P1,Sedona Trip,,
-14,Personal,Electronics,Buy macbook,Hrishi,"June 1, 2026",In Progress,P1,Sedona Trip,,
-15,Personal,Dental,Schedule sinus graft and request sedation,Hrishi,"June 24, 2026",In Progress,P0,Seattle Trip,,`;
-
-  const parsedLines = parseCSV(demoCSV);
-  appState.tasks = processTasksFromCSV(parsedLines);
-  saveToLocalStorage();
-  filterAndRender();
-}
-
-function handleFileUpload(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    const csvContent = event.target.result;
-    const parsedLines = parseCSV(csvContent);
-    const newTasks = processTasksFromCSV(parsedLines);
-
-    if (newTasks.length > 0) {
-      appState.tasks = newTasks;
-      saveToLocalStorage();
-      filterAndRender();
-      e.target.value = '';
-    } else {
-      alert("No valid tasks found in the uploaded CSV. Please check the columns and contents.");
-    }
-  };
-  reader.readAsText(file);
-}
-
-function saveToLocalStorage() {
-  localStorage.setItem('household_tasks', JSON.stringify(appState.tasks));
-}
-
-// --- Filtering and Query Logic ---
+// --- Filtering ---
 function filterAndRender() {
   const { search, category, subCategory, owner, priority, milestone, status } = appState.activeFilters;
 
   const hasActiveFilters = search.trim() !== ''
-    || category !== 'all'
-    || subCategory !== 'all'
-    || owner !== 'all'
-    || priority !== 'all'
-    || milestone !== 'all'
-    || status !== 'all';
+    || category !== 'all' || subCategory !== 'all' || owner !== 'all'
+    || priority !== 'all' || milestone !== 'all' || status !== 'all';
 
   document.getElementById('clear-filters-btn').style.display = hasActiveFilters ? 'inline-flex' : 'none';
 
@@ -357,14 +367,12 @@ function filterAndRender() {
       const fields = [task.title, task.subCategory, task.owner, task.milestone, task.notes, task.category, task.status];
       if (!fields.some(f => f && f.toLowerCase().includes(q))) return false;
     }
-
-    if (category !== 'all' && task.category !== category)         return false;
+    if (category !== 'all' && task.category !== category)          return false;
     if (subCategory !== 'all' && task.subCategory !== subCategory) return false;
-    if (owner !== 'all' && task.owner !== owner)                  return false;
-    if (priority !== 'all' && task.priority !== priority)         return false;
-    if (milestone !== 'all' && task.milestone !== milestone)      return false;
-    if (status !== 'all' && task.status !== status)               return false;
-
+    if (owner !== 'all' && task.owner !== owner)                   return false;
+    if (priority !== 'all' && task.priority !== priority)          return false;
+    if (milestone !== 'all' && task.milestone !== milestone)       return false;
+    if (status !== 'all' && task.status !== status)                return false;
     return true;
   });
 
@@ -382,22 +390,16 @@ function clearFilters() {
   document.getElementById('status-filter').value = 'all';
 
   appState.activeFilters = {
-    search: '',
-    category: 'all',
-    subCategory: 'all',
-    owner: 'all',
-    priority: 'all',
-    milestone: 'all',
-    status: 'all'
+    search: '', category: 'all', subCategory: 'all', owner: 'all',
+    priority: 'all', milestone: 'all', status: 'all'
   };
 
   filterAndRender();
 }
 
-// --- Analytics Render ---
+// --- Analytics ---
 function renderAnalytics() {
   const total = appState.tasks.length;
-
   if (total === 0) {
     ['stat-total', 'stat-todo', 'stat-progress', 'stat-done'].forEach(id => {
       document.getElementById(id).innerText = '0';
@@ -422,17 +424,18 @@ function renderAnalytics() {
   document.getElementById('stat-done-pct').innerText     = `${Math.round((doneCount / total) * 100)}%`;
 }
 
-// --- Tasks Rendering ---
+// --- Rendering ---
 function renderTasks() {
   const gridContainer = document.getElementById('tasks-grid-container');
   const emptyState    = document.getElementById('empty-state-panel');
-
   emptyState.style.display = 'none';
 
   if (appState.filteredTasks.length === 0) {
     gridContainer.innerHTML = '';
     emptyState.style.display = 'flex';
-
+    document.getElementById('empty-state-icon').textContent = '📋';
+    document.getElementById('empty-state-title').textContent = 'No tasks found';
+    document.getElementById('empty-state-text').textContent = 'Try adjusting your filters.';
     ['count-todo', 'count-progress', 'count-done-column'].forEach(id => {
       document.getElementById(id).innerText = '0';
     });
@@ -450,9 +453,9 @@ function renderTasks() {
 }
 
 function renderGridView() {
-  const gridContainer = document.getElementById('tasks-grid-container');
-  gridContainer.innerHTML = '';
-  appState.filteredTasks.forEach(task => gridContainer.appendChild(createTaskCard(task)));
+  const container = document.getElementById('tasks-grid-container');
+  container.innerHTML = '';
+  appState.filteredTasks.forEach(task => container.appendChild(createTaskCard(task)));
 }
 
 function renderKanbanView() {
@@ -477,34 +480,35 @@ function renderKanbanView() {
   doneTasks.forEach(task     => doneWrapper.appendChild(createTaskCard(task, true)));
 }
 
-// Create a DOM Element for a Task Card
 function createTaskCard(task, isKanban = false) {
   const card = document.createElement('div');
   card.className = `task-card glass-panel ${isKanban ? 'kanban-card' : ''}`;
   card.setAttribute('data-id', task.id);
   if (isKanban) card.setAttribute('draggable', 'true');
 
-  // Category CSS class
   let catClass = 'tag-other';
-  if (task.category === 'House')     catClass = 'tag-house';
+  if (task.category === 'House')    catClass = 'tag-house';
   else if (task.category === 'Personal') catClass = 'tag-personal';
   else if (task.category === 'Medical')  catClass = 'tag-medical';
   else if (task.category === 'Work')     catClass = 'tag-work';
 
-  // Status CSS class
   let statusClass = 'status-todo';
   if (task.status === 'In Progress') statusClass = 'status-progress';
   else if (task.status === 'Completed') statusClass = 'status-done';
 
-  // Priority CSS class (P0 = high urgency, P1 = medium)
   let priorityClass = 'priority-medium';
   if (task.priority === 'P0') priorityClass = 'priority-high';
 
-  // Milestone footer element
-  const milestoneHtml = task.milestone
+  // Milestone label: name + date from appState.milestones if available
+  const milestoneDate = task.milestone ? (appState.milestones[task.milestone] || '') : '';
+  const milestoneLabel = task.milestone
+    ? (milestoneDate ? `${task.milestone} · ${milestoneDate}` : task.milestone)
+    : null;
+
+  const milestoneHtml = milestoneLabel
     ? `<div class="task-milestone">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
-        <span>${escapeHTML(task.milestone)}</span>
+        <span>${escapeHTML(milestoneLabel)}</span>
       </div>`
     : `<div></div>`;
 
@@ -538,33 +542,25 @@ function createTaskCard(task, isKanban = false) {
 // --- View Switching ---
 function switchView(viewName) {
   appState.currentView = viewName;
-
   const gridBtn    = document.getElementById('view-grid-btn');
   const kanbanBtn  = document.getElementById('view-kanban-btn');
   const gridPanel  = document.getElementById('grid-view-panel');
   const kanbanPanel = document.getElementById('kanban-view-panel');
 
   if (viewName === 'grid') {
-    gridBtn.classList.add('active');
-    kanbanBtn.classList.remove('active');
-    gridPanel.classList.add('active');
-    kanbanPanel.classList.remove('active');
+    gridBtn.classList.add('active');    kanbanBtn.classList.remove('active');
+    gridPanel.classList.add('active'); kanbanPanel.classList.remove('active');
   } else {
-    gridBtn.classList.remove('active');
-    kanbanBtn.classList.add('active');
-    gridPanel.classList.remove('active');
-    kanbanPanel.classList.add('active');
+    gridBtn.classList.remove('active');    kanbanBtn.classList.add('active');
+    gridPanel.classList.remove('active'); kanbanPanel.classList.add('active');
   }
-
   renderTasks();
 }
 
-// --- Modal Details ---
+// --- Modal ---
 function openModal(taskId) {
   const task = appState.tasks.find(t => t.id === taskId);
   if (!task) return;
-
-  const modal = document.getElementById('task-modal');
 
   document.getElementById('modal-title').innerText       = task.title;
   document.getElementById('modal-status').innerText      = task.status;
@@ -573,9 +569,14 @@ function openModal(taskId) {
   document.getElementById('modal-category').innerText    = task.category;
   document.getElementById('modal-subcategory').innerText = task.subCategory || '—';
   document.getElementById('modal-owner').innerText       = task.owner || '—';
-  document.getElementById('modal-milestone').innerText   = task.milestone || '—';
 
-  // Date Completed — only show section if filled
+  // Milestone with date
+  const milestoneDate = task.milestone ? (appState.milestones[task.milestone] || '') : '';
+  document.getElementById('modal-milestone').innerText = task.milestone
+    ? (milestoneDate ? `${task.milestone} (${milestoneDate})` : task.milestone)
+    : '—';
+
+  // Date Completed
   const dateCompSection = document.getElementById('modal-date-completed-section');
   if (task.dateCompleted) {
     document.getElementById('modal-date-completed').innerText = task.dateCompleted;
@@ -584,10 +585,10 @@ function openModal(taskId) {
     dateCompSection.style.display = 'none';
   }
 
-  // Notes section
+  // Comments
   const notesPanel   = document.getElementById('modal-notes');
   const notesSection = document.getElementById('modal-notes-section');
-  if (task.notes && task.notes.trim() !== '') {
+  if (task.notes && task.notes.trim()) {
     notesPanel.innerText = task.notes;
     notesSection.style.display = 'block';
   } else {
@@ -595,11 +596,11 @@ function openModal(taskId) {
     notesSection.style.display = 'none';
   }
 
-  // Header category tag
+  // Category tag in modal header
   const tagsContainer = document.getElementById('modal-tags-container');
   tagsContainer.innerHTML = '';
   let catClass = 'tag-other';
-  if (task.category === 'House')     catClass = 'tag-house';
+  if (task.category === 'House')    catClass = 'tag-house';
   else if (task.category === 'Personal') catClass = 'tag-personal';
   else if (task.category === 'Medical')  catClass = 'tag-medical';
   else if (task.category === 'Work')     catClass = 'tag-work';
@@ -608,7 +609,7 @@ function openModal(taskId) {
   catTag.innerText = task.category;
   tagsContainer.appendChild(catTag);
 
-  modal.classList.add('open');
+  document.getElementById('task-modal').classList.add('open');
 }
 
 function closeModal() {
@@ -636,9 +637,7 @@ function setupKanbanDragAndDrop() {
       e.preventDefault();
       wrapper.classList.add('drag-over');
     });
-
     wrapper.addEventListener('dragleave', () => wrapper.classList.remove('drag-over'));
-
     wrapper.addEventListener('drop', (e) => {
       e.preventDefault();
       wrapper.classList.remove('drag-over');
@@ -650,10 +649,9 @@ function setupKanbanDragAndDrop() {
 }
 
 function updateTaskStatus(taskId, newStatus) {
-  const taskIndex = appState.tasks.findIndex(t => t.id === taskId);
-  if (taskIndex !== -1) {
-    appState.tasks[taskIndex].status = newStatus;
-    saveToLocalStorage();
+  const idx = appState.tasks.findIndex(t => t.id === taskId);
+  if (idx !== -1) {
+    appState.tasks[idx].status = newStatus;
     filterAndRender();
   }
 }
