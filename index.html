@@ -87,14 +87,6 @@
           <span class="stat-percentage" id="stat-done-pct">0%</span>
         </div>
       </div>
-      <!-- Overdue Card -->
-      <div class="stat-card glass-panel overdue">
-        <span class="stat-label">Overdue</span>
-        <div class="stat-value-container">
-          <span class="stat-value" id="stat-overdue">0</span>
-          <span class="stat-percentage" id="stat-overdue-pct">0%</span>
-        </div>
-      </div>
     </section>
 
     <!-- FILTER BAR -->
@@ -113,10 +105,30 @@
         <div class="select-wrapper">
           <select id="category-filter" class="filter-select">
             <option value="all">All Categories</option>
+            <option value="House">House</option>
             <option value="Personal">Personal</option>
-            <option value="Medical">Medical</option>
-            <option value="Work">Work</option>
             <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <!-- SubCategory Filter -->
+        <div class="select-wrapper">
+          <select id="subcategory-filter" class="filter-select">
+            <option value="all">All Sub-Categories</option>
+            <option value="Plumbing">Plumbing</option>
+            <option value="Electrical">Electrical</option>
+            <option value="Handywork">Handywork</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Dental">Dental</option>
+          </select>
+        </div>
+
+        <!-- Owner Filter -->
+        <div class="select-wrapper">
+          <select id="owner-filter" class="filter-select">
+            <option value="all">All Owners</option>
+            <option value="Minu">Minu</option>
+            <option value="Hrishi">Hrishi</option>
           </select>
         </div>
 
@@ -124,9 +136,17 @@
         <div class="select-wrapper">
           <select id="priority-filter" class="filter-select">
             <option value="all">All Priorities</option>
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
-            <option value="Low">Low</option>
+            <option value="P0">P0</option>
+            <option value="P1">P1</option>
+          </select>
+        </div>
+
+        <!-- Milestone Filter -->
+        <div class="select-wrapper">
+          <select id="milestone-filter" class="filter-select">
+            <option value="all">All Milestones</option>
+            <option value="Seattle Trip">Seattle Trip</option>
+            <option value="Sedona Trip">Sedona Trip</option>
           </select>
         </div>
 
@@ -137,7 +157,6 @@
             <option value="To Do">To Do</option>
             <option value="In Progress">In Progress</option>
             <option value="Completed">Completed</option>
-            <option value="Overdue">Overdue Only</option>
           </select>
         </div>
 
@@ -245,26 +264,38 @@
         </div>
         <div class="meta-item">
           <span class="meta-label">Priority</span>
-          <span class="meta-value" id="modal-priority">High</span>
+          <span class="meta-value" id="modal-priority">—</span>
         </div>
         <div class="meta-item">
-          <span class="meta-label">Due Date</span>
-          <span class="meta-value" id="modal-due-date">2026-06-30</span>
+          <span class="meta-label">Date Set</span>
+          <span class="meta-value" id="modal-date-set">—</span>
         </div>
         <div class="meta-item">
           <span class="meta-label">Category</span>
-          <span class="meta-value" id="modal-category">Personal</span>
+          <span class="meta-value" id="modal-category">—</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Sub-Category</span>
+          <span class="meta-value" id="modal-subcategory">—</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Owner</span>
+          <span class="meta-value" id="modal-owner">—</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Milestone</span>
+          <span class="meta-value" id="modal-milestone">—</span>
         </div>
       </div>
 
-      <div class="modal-section">
-        <h3 class="modal-section-title">Description</h3>
-        <p class="modal-description" id="modal-description">Detailed description will go here...</p>
+      <div class="modal-section" id="modal-date-completed-section" style="display:none;">
+        <h3 class="modal-section-title">Date Completed</h3>
+        <p class="modal-notes-area" id="modal-date-completed"></p>
       </div>
 
       <div class="modal-section" id="modal-notes-section">
-        <h3 class="modal-section-title">Notes / Additional Details</h3>
-        <p class="modal-notes-area" id="modal-notes">No notes available.</p>
+        <h3 class="modal-section-title">Comments</h3>
+        <p class="modal-notes-area" id="modal-notes">No comments available.</p>
       </div>
     </div>
   </div>

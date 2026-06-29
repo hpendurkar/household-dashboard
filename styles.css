@@ -48,6 +48,7 @@
   --priority-low-text: #3b82f6;
 
   /* Category Colors */
+  --cat-house: #0d9488;
   --cat-personal: #8b5cf6;
   --cat-medical: #ec4899;
   --cat-work: #0ea5e9;
@@ -508,10 +509,21 @@ body {
   color: white;
 }
 
+.tag-house { background-color: var(--cat-house); }
 .tag-personal { background-color: var(--cat-personal); }
 .tag-medical { background-color: var(--cat-medical); }
 .tag-work { background-color: var(--cat-work); }
 .tag-other { background-color: var(--cat-other); }
+
+.task-subcategory-tag {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+}
 
 .task-priority-badge {
   font-size: 11px;
@@ -550,6 +562,39 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
   height: 38px;
+}
+
+.task-owner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.task-owner svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.task-milestone {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.task-milestone svg {
+  flex-shrink: 0;
+  color: var(--accent-color);
+}
+
+.task-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .task-card-footer {
