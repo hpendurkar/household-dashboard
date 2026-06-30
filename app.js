@@ -6,7 +6,7 @@
 const SHEET_ID = '18n_93cw2RA-8-h79nKVnzeEhu-dndUp6V3FycuGjVrY';
 const TASKS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
 const MILESTONES_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=23811170`;
-const GAS_URL = ''; // paste GAS Web App /exec URL here after deployment
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzDqZw_klaVaY2lIgjETkGhnhTRF3Y8LLtRfR5DiwWZya9fj9xPQ4wO6vP25WgGHUKEsA/exec'; // paste GAS Web App /exec URL here after deployment
 
 // --- Application State ---
 let appState = {
@@ -288,21 +288,21 @@ function mapHeaders(headers) {
     return -1;
   };
 
-  columnMapping.id          = findColumn([/^id$/i]);
-  columnMapping.title       = findColumn([/task.*desc/i, /description/i, /task/i, /title/i, /name/i, /summary/i, /subject/i, /activity/i]);
-  columnMapping.category    = findColumn([/^cat/i, /^type/i, /^group/i, /^area/i, /^label/i]);
+  columnMapping.id = findColumn([/^id$/i]);
+  columnMapping.title = findColumn([/task.*desc/i, /description/i, /task/i, /title/i, /name/i, /summary/i, /subject/i, /activity/i]);
+  columnMapping.category = findColumn([/^cat/i, /^type/i, /^group/i, /^area/i, /^label/i]);
   columnMapping.subCategory = findColumn([/sub.?cat/i, /sub.?type/i]);
-  columnMapping.owner       = findColumn([/owner/i, /bearer/i, /assigned/i, /person/i]);
-  columnMapping.dateSet     = findColumn([/date.?set/i, /set.?date/i, /date.?start/i, /created/i]);
-  columnMapping.status      = findColumn([/^status$/i, /^state$/i, /^stage$/i]);
-  columnMapping.priority    = findColumn([/prior/i, /import/i, /urg/i, /^level/i]);
-  columnMapping.milestone   = findColumn([/milestone/i, /goal/i, /sprint/i, /phase/i]);
+  columnMapping.owner = findColumn([/owner/i, /bearer/i, /assigned/i, /person/i]);
+  columnMapping.dateSet = findColumn([/date.?set/i, /set.?date/i, /date.?start/i, /created/i]);
+  columnMapping.status = findColumn([/^status$/i, /^state$/i, /^stage$/i]);
+  columnMapping.priority = findColumn([/prior/i, /import/i, /urg/i, /^level/i]);
+  columnMapping.milestone = findColumn([/milestone/i, /goal/i, /sprint/i, /phase/i]);
   columnMapping.dateCompleted = findColumn([/date.?comp/i, /comp.*date/i, /finish/i, /end.?date/i]);
-  columnMapping.notes       = findColumn([/note/i, /comment/i, /remark/i, /extra/i]);
+  columnMapping.notes = findColumn([/note/i, /comment/i, /remark/i, /extra/i]);
 
-  if (columnMapping.title === -1)    columnMapping.title = 0;
+  if (columnMapping.title === -1) columnMapping.title = 0;
   if (columnMapping.category === -1) columnMapping.category = 1 < headers.length ? 1 : 0;
-  if (columnMapping.status === -1)   columnMapping.status = 2 < headers.length ? 2 : 0;
+  if (columnMapping.status === -1) columnMapping.status = 2 < headers.length ? 2 : 0;
 }
 
 function processTasksFromCSV(lines) {
@@ -321,27 +321,27 @@ function processTasksFromCSV(lines) {
     const rawTitle = get(row, columnMapping.title);
     if (!rawTitle) continue;
 
-    const rawCategory    = get(row, columnMapping.category);
+    const rawCategory = get(row, columnMapping.category);
     const rawSubCategory = get(row, columnMapping.subCategory);
-    const rawOwner       = get(row, columnMapping.owner);
-    const rawDateSet     = get(row, columnMapping.dateSet);
-    const rawStatus      = get(row, columnMapping.status);
-    const rawPriority    = get(row, columnMapping.priority);
-    const rawMilestone   = get(row, columnMapping.milestone);
-    const rawDateComp    = get(row, columnMapping.dateCompleted);
-    const rawNotes       = get(row, columnMapping.notes);
+    const rawOwner = get(row, columnMapping.owner);
+    const rawDateSet = get(row, columnMapping.dateSet);
+    const rawStatus = get(row, columnMapping.status);
+    const rawPriority = get(row, columnMapping.priority);
+    const rawMilestone = get(row, columnMapping.milestone);
+    const rawDateComp = get(row, columnMapping.dateCompleted);
+    const rawNotes = get(row, columnMapping.notes);
 
     // Normalize Category
     let category = 'Other';
-    if (/house/i.test(rawCategory))                                   category = 'House';
-    else if (/personal/i.test(rawCategory))                           category = 'Personal';
+    if (/house/i.test(rawCategory)) category = 'House';
+    else if (/personal/i.test(rawCategory)) category = 'Personal';
     else if (/med/i.test(rawCategory) || /health/i.test(rawCategory)) category = 'Medical';
-    else if (/work/i.test(rawCategory) || /job/i.test(rawCategory))   category = 'Work';
+    else if (/work/i.test(rawCategory) || /job/i.test(rawCategory)) category = 'Work';
 
     // Normalize Status
     let status = 'To Do';
-    if (/not.?start/i.test(rawStatus))                                                          status = 'To Do';
-    else if (/done/i.test(rawStatus) || /comp/i.test(rawStatus) || /finish/i.test(rawStatus))  status = 'Completed';
+    if (/not.?start/i.test(rawStatus)) status = 'To Do';
+    else if (/done/i.test(rawStatus) || /comp/i.test(rawStatus) || /finish/i.test(rawStatus)) status = 'Completed';
     else if (/progress/i.test(rawStatus) || /doing/i.test(rawStatus) || /active/i.test(rawStatus)) status = 'In Progress';
     if (rawDateComp) status = 'Completed';
 
@@ -421,12 +421,12 @@ function filterAndRender() {
       const fields = [task.title, task.subCategory, task.owner, task.milestone, task.notes, task.category, task.status];
       if (!fields.some(f => f && f.toLowerCase().includes(q))) return false;
     }
-    if (category !== 'all' && task.category !== category)          return false;
+    if (category !== 'all' && task.category !== category) return false;
     if (subCategory !== 'all' && task.subCategory !== subCategory) return false;
-    if (owner !== 'all' && task.owner !== owner)                   return false;
-    if (priority !== 'all' && task.priority !== priority)          return false;
-    if (milestone !== 'all' && task.milestone !== milestone)       return false;
-    if (status !== 'all' && task.status !== status)                return false;
+    if (owner !== 'all' && task.owner !== owner) return false;
+    if (priority !== 'all' && task.priority !== priority) return false;
+    if (milestone !== 'all' && task.milestone !== milestone) return false;
+    if (status !== 'all' && task.status !== status) return false;
     return true;
   });
 
@@ -464,24 +464,24 @@ function renderAnalytics() {
     return;
   }
 
-  const todoCount     = appState.tasks.filter(t => t.status === 'To Do').length;
+  const todoCount = appState.tasks.filter(t => t.status === 'To Do').length;
   const progressCount = appState.tasks.filter(t => t.status === 'In Progress').length;
-  const doneCount     = appState.tasks.filter(t => t.status === 'Completed').length;
+  const doneCount = appState.tasks.filter(t => t.status === 'Completed').length;
 
-  document.getElementById('stat-total').innerText    = total;
-  document.getElementById('stat-todo').innerText     = todoCount;
+  document.getElementById('stat-total').innerText = total;
+  document.getElementById('stat-todo').innerText = todoCount;
   document.getElementById('stat-progress').innerText = progressCount;
-  document.getElementById('stat-done').innerText     = doneCount;
+  document.getElementById('stat-done').innerText = doneCount;
 
-  document.getElementById('stat-todo-pct').innerText     = `${Math.round((todoCount / total) * 100)}%`;
+  document.getElementById('stat-todo-pct').innerText = `${Math.round((todoCount / total) * 100)}%`;
   document.getElementById('stat-progress-pct').innerText = `${Math.round((progressCount / total) * 100)}%`;
-  document.getElementById('stat-done-pct').innerText     = `${Math.round((doneCount / total) * 100)}%`;
+  document.getElementById('stat-done-pct').innerText = `${Math.round((doneCount / total) * 100)}%`;
 }
 
 // --- Rendering ---
 function renderTasks() {
   const gridContainer = document.getElementById('tasks-grid-container');
-  const emptyState    = document.getElementById('empty-state-panel');
+  const emptyState = document.getElementById('empty-state-panel');
   emptyState.style.display = 'none';
 
   if (appState.filteredTasks.length === 0) {
@@ -513,25 +513,25 @@ function renderGridView() {
 }
 
 function renderKanbanView() {
-  const todoWrapper     = document.getElementById('kanban-wrapper-todo');
+  const todoWrapper = document.getElementById('kanban-wrapper-todo');
   const progressWrapper = document.getElementById('kanban-wrapper-progress');
-  const doneWrapper     = document.getElementById('kanban-wrapper-done');
+  const doneWrapper = document.getElementById('kanban-wrapper-done');
 
   todoWrapper.innerHTML = '';
   progressWrapper.innerHTML = '';
   doneWrapper.innerHTML = '';
 
-  const todoTasks     = appState.filteredTasks.filter(t => t.status === 'To Do');
+  const todoTasks = appState.filteredTasks.filter(t => t.status === 'To Do');
   const progressTasks = appState.filteredTasks.filter(t => t.status === 'In Progress');
-  const doneTasks     = appState.filteredTasks.filter(t => t.status === 'Completed');
+  const doneTasks = appState.filteredTasks.filter(t => t.status === 'Completed');
 
-  document.getElementById('count-todo').innerText        = todoTasks.length;
-  document.getElementById('count-progress').innerText    = progressTasks.length;
+  document.getElementById('count-todo').innerText = todoTasks.length;
+  document.getElementById('count-progress').innerText = progressTasks.length;
   document.getElementById('count-done-column').innerText = doneTasks.length;
 
-  todoTasks.forEach(task     => todoWrapper.appendChild(createTaskCard(task, true)));
+  todoTasks.forEach(task => todoWrapper.appendChild(createTaskCard(task, true)));
   progressTasks.forEach(task => progressWrapper.appendChild(createTaskCard(task, true)));
-  doneTasks.forEach(task     => doneWrapper.appendChild(createTaskCard(task, true)));
+  doneTasks.forEach(task => doneWrapper.appendChild(createTaskCard(task, true)));
 }
 
 function createTaskCard(task, isKanban = false) {
@@ -541,10 +541,10 @@ function createTaskCard(task, isKanban = false) {
   if (isKanban) card.setAttribute('draggable', 'true');
 
   let catClass = 'tag-other';
-  if (task.category === 'House')    catClass = 'tag-house';
+  if (task.category === 'House') catClass = 'tag-house';
   else if (task.category === 'Personal') catClass = 'tag-personal';
-  else if (task.category === 'Medical')  catClass = 'tag-medical';
-  else if (task.category === 'Work')     catClass = 'tag-work';
+  else if (task.category === 'Medical') catClass = 'tag-medical';
+  else if (task.category === 'Work') catClass = 'tag-work';
 
   let statusClass = 'status-todo';
   if (task.status === 'In Progress') statusClass = 'status-progress';
@@ -596,16 +596,16 @@ function createTaskCard(task, isKanban = false) {
 // --- View Switching ---
 function switchView(viewName) {
   appState.currentView = viewName;
-  const gridBtn    = document.getElementById('view-grid-btn');
-  const kanbanBtn  = document.getElementById('view-kanban-btn');
-  const gridPanel  = document.getElementById('grid-view-panel');
+  const gridBtn = document.getElementById('view-grid-btn');
+  const kanbanBtn = document.getElementById('view-kanban-btn');
+  const gridPanel = document.getElementById('grid-view-panel');
   const kanbanPanel = document.getElementById('kanban-view-panel');
 
   if (viewName === 'grid') {
-    gridBtn.classList.add('active');    kanbanBtn.classList.remove('active');
+    gridBtn.classList.add('active'); kanbanBtn.classList.remove('active');
     gridPanel.classList.add('active'); kanbanPanel.classList.remove('active');
   } else {
-    gridBtn.classList.remove('active');    kanbanBtn.classList.add('active');
+    gridBtn.classList.remove('active'); kanbanBtn.classList.add('active');
     gridPanel.classList.remove('active'); kanbanPanel.classList.add('active');
   }
   renderTasks();
@@ -625,13 +625,13 @@ function openModal(taskId) {
   modal.dataset.taskId = task.id;
 
   // --- Populate read-only view ---
-  document.getElementById('modal-title').innerText       = task.title;
-  document.getElementById('modal-status').innerText      = task.status;
-  document.getElementById('modal-priority').innerText    = task.priority || '—';
-  document.getElementById('modal-date-set').innerText    = task.dateSet || 'Not set';
-  document.getElementById('modal-category').innerText    = task.category;
+  document.getElementById('modal-title').innerText = task.title;
+  document.getElementById('modal-status').innerText = task.status;
+  document.getElementById('modal-priority').innerText = task.priority || '—';
+  document.getElementById('modal-date-set').innerText = task.dateSet || 'Not set';
+  document.getElementById('modal-category').innerText = task.category;
   document.getElementById('modal-subcategory').innerText = task.subCategory || '—';
-  document.getElementById('modal-owner').innerText       = task.owner || '—';
+  document.getElementById('modal-owner').innerText = task.owner || '—';
 
   const milestoneDate = task.milestone ? (appState.milestones[task.milestone] || '') : '';
   document.getElementById('modal-milestone').innerText = task.milestone
@@ -646,7 +646,7 @@ function openModal(taskId) {
     dateCompSection.style.display = 'none';
   }
 
-  const notesPanel   = document.getElementById('modal-notes');
+  const notesPanel = document.getElementById('modal-notes');
   const notesSection = document.getElementById('modal-notes-section');
   if (task.notes && task.notes.trim()) {
     notesPanel.innerText = task.notes;
@@ -659,24 +659,24 @@ function openModal(taskId) {
   const tagsContainer = document.getElementById('modal-tags-container');
   tagsContainer.innerHTML = '';
   let catClass = 'tag-other';
-  if (task.category === 'House')         catClass = 'tag-house';
+  if (task.category === 'House') catClass = 'tag-house';
   else if (task.category === 'Personal') catClass = 'tag-personal';
-  else if (task.category === 'Medical')  catClass = 'tag-medical';
-  else if (task.category === 'Work')     catClass = 'tag-work';
+  else if (task.category === 'Medical') catClass = 'tag-medical';
+  else if (task.category === 'Work') catClass = 'tag-work';
   const catTag = document.createElement('span');
   catTag.className = `task-category-tag ${catClass}`;
   catTag.innerText = task.category;
   tagsContainer.appendChild(catTag);
 
   // --- Populate edit form ---
-  document.getElementById('modal-form-title').value         = task.title;
-  document.getElementById('modal-form-category').value      = task.category;
-  document.getElementById('modal-form-subcategory').value   = task.subCategory || '';
-  document.getElementById('modal-form-owner').value         = task.owner || '';
-  document.getElementById('modal-form-priority').value      = task.priority || 'P1';
-  document.getElementById('modal-form-status').value        = task.status;
+  document.getElementById('modal-form-title').value = task.title;
+  document.getElementById('modal-form-category').value = task.category;
+  document.getElementById('modal-form-subcategory').value = task.subCategory || '';
+  document.getElementById('modal-form-owner').value = task.owner || '';
+  document.getElementById('modal-form-priority').value = task.priority || 'P1';
+  document.getElementById('modal-form-status').value = task.status;
   document.getElementById('modal-form-date-completed').value = task.dateCompleted || '';
-  document.getElementById('modal-form-notes').value         = task.notes || '';
+  document.getElementById('modal-form-notes').value = task.notes || '';
   populateFormMilestoneSelect(task.milestone);
 
   modal.classList.add('open');
@@ -701,32 +701,32 @@ function openAddTaskModal() {
   document.getElementById('modal-delete-confirm').style.display = 'none';
 
   // Clear all form inputs
-  document.getElementById('modal-form-title').value          = '';
-  document.getElementById('modal-form-category').value       = 'House';
-  document.getElementById('modal-form-subcategory').value    = '';
-  document.getElementById('modal-form-owner').value          = '';
-  document.getElementById('modal-form-priority').value       = 'P1';
-  document.getElementById('modal-form-status').value         = 'To Do';
+  document.getElementById('modal-form-title').value = '';
+  document.getElementById('modal-form-category').value = 'House';
+  document.getElementById('modal-form-subcategory').value = '';
+  document.getElementById('modal-form-owner').value = '';
+  document.getElementById('modal-form-priority').value = 'P1';
+  document.getElementById('modal-form-status').value = 'To Do';
   document.getElementById('modal-form-date-completed').value = '';
-  document.getElementById('modal-form-notes').value          = '';
+  document.getElementById('modal-form-notes').value = '';
   populateFormMilestoneSelect('');
 
   modal.classList.add('open');
 }
 
 async function saveTask() {
-  const modal  = document.getElementById('task-modal');
+  const modal = document.getElementById('task-modal');
   const taskId = modal.dataset.taskId;
 
-  const title         = document.getElementById('modal-form-title').value.trim();
-  const category      = document.getElementById('modal-form-category').value;
-  const subCategory   = document.getElementById('modal-form-subcategory').value.trim();
-  const owner         = document.getElementById('modal-form-owner').value;
-  const priority      = document.getElementById('modal-form-priority').value;
-  const milestone     = document.getElementById('modal-form-milestone').value;
-  const status        = document.getElementById('modal-form-status').value;
+  const title = document.getElementById('modal-form-title').value.trim();
+  const category = document.getElementById('modal-form-category').value;
+  const subCategory = document.getElementById('modal-form-subcategory').value.trim();
+  const owner = document.getElementById('modal-form-owner').value;
+  const priority = document.getElementById('modal-form-priority').value;
+  const milestone = document.getElementById('modal-form-milestone').value;
+  const status = document.getElementById('modal-form-status').value;
   const dateCompleted = document.getElementById('modal-form-date-completed').value.trim();
-  const notes         = document.getElementById('modal-form-notes').value.trim();
+  const notes = document.getElementById('modal-form-notes').value.trim();
 
   if (!title) {
     document.getElementById('modal-form-title').focus();
@@ -738,11 +738,11 @@ async function saveTask() {
     const maxId = Math.max(0, ...appState.tasks.map(t => parseInt(t.rawId) || 0));
     const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     const newTask = {
-      id:            `task-new-${Date.now()}`,
-      rawId:         String(maxId + 1),
-      sheetRow:      null,
+      id: `task-new-${Date.now()}`,
+      rawId: String(maxId + 1),
+      sheetRow: null,
       title, category, subCategory, owner,
-      dateSet:       today,
+      dateSet: today,
       status, priority, milestone, dateCompleted, notes
     };
     await sheetWrite('add', null, taskToValues(newTask));
@@ -796,7 +796,7 @@ function setupKanbanDragAndDrop() {
     wrapper.addEventListener('drop', (e) => {
       e.preventDefault();
       wrapper.classList.remove('drag-over');
-      const taskId      = e.dataTransfer.getData('text/plain');
+      const taskId = e.dataTransfer.getData('text/plain');
       const targetStatus = wrapper.getAttribute('data-status');
       if (taskId && targetStatus) updateTaskStatus(taskId, targetStatus);
     });
