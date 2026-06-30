@@ -6,6 +6,7 @@
 const SHEET_ID = '18n_93cw2RA-8-h79nKVnzeEhu-dndUp6V3FycuGjVrY';
 const TASKS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
 const MILESTONES_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=23811170`;
+const GAS_URL = ''; // paste GAS Web App /exec URL here after deployment
 
 // --- Application State ---
 let appState = {
@@ -125,6 +126,26 @@ function initEventListeners() {
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
+  });
+
+  document.getElementById('add-task-btn').addEventListener('click', openAddTaskModal);
+
+  document.getElementById('modal-edit-btn').addEventListener('click', () => {
+    document.querySelector('#task-modal .modal-window').classList.add('modal-editing');
+  });
+  document.getElementById('modal-cancel-btn').addEventListener('click', () => {
+    const win = document.querySelector('#task-modal .modal-window');
+    win.classList.remove('modal-editing', 'modal-adding');
+  });
+  document.getElementById('modal-save-btn').addEventListener('click', saveTask);
+  document.getElementById('modal-delete-btn').addEventListener('click', () => {
+    document.getElementById('modal-delete-confirm').style.display = 'flex';
+  });
+  document.getElementById('modal-confirm-delete-btn').addEventListener('click', () => {
+    deleteTask(document.getElementById('task-modal').dataset.taskId);
+  });
+  document.getElementById('modal-cancel-delete-btn').addEventListener('click', () => {
+    document.getElementById('modal-delete-confirm').style.display = 'none';
   });
 
   setupKanbanDragAndDrop();
@@ -335,6 +356,8 @@ function processTasksFromCSV(lines) {
 
     tasks.push({
       id: `task-${i}-${Date.now()}`,
+      rawId: get(row, columnMapping.id),  // original sheet ID for write-back
+      sheetRow: i + 1,                    // 1-based row in sheet (header = row 1, first data row = 2; i starts at 1 here)
       title: rawTitle,
       category,
       subCategory: rawSubCategory,
@@ -349,6 +372,37 @@ function processTasksFromCSV(lines) {
   }
 
   return tasks;
+}
+
+// --- Sheet Write Helpers ---
+function taskToValues(task) {
+  // Column order must match the sheet: ID, Category, SubCategory, Task Description, Owner, Date Set, Status, Priority, Milestone, Date Completed, Comments
+  return [
+    task.rawId, task.category, task.subCategory, task.title,
+    task.owner, task.dateSet, task.status, task.priority,
+    task.milestone, task.dateCompleted, task.notes
+  ];
+}
+
+async function sheetWrite(action, rowIndex, values) {
+  if (!GAS_URL) return; // no-op until GAS is deployed
+  await fetch(GAS_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    body: JSON.stringify({ action, row: rowIndex, values })
+  });
+}
+
+function populateFormMilestoneSelect(selectedValue) {
+  const sel = document.getElementById('modal-form-milestone');
+  sel.innerHTML = '<option value="">None</option>';
+  Object.entries(appState.milestones).forEach(([name, date]) => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = date ? `${name} (${date})` : name;
+    sel.appendChild(opt);
+  });
+  sel.value = selectedValue || '';
 }
 
 // --- Filtering ---
@@ -562,6 +616,15 @@ function openModal(taskId) {
   const task = appState.tasks.find(t => t.id === taskId);
   if (!task) return;
 
+  const modal = document.getElementById('task-modal');
+  const win = modal.querySelector('.modal-window');
+
+  // Reset to view mode
+  win.classList.remove('modal-editing', 'modal-adding');
+  document.getElementById('modal-delete-confirm').style.display = 'none';
+  modal.dataset.taskId = task.id;
+
+  // --- Populate read-only view ---
   document.getElementById('modal-title').innerText       = task.title;
   document.getElementById('modal-status').innerText      = task.status;
   document.getElementById('modal-priority').innerText    = task.priority || '—';
@@ -570,13 +633,11 @@ function openModal(taskId) {
   document.getElementById('modal-subcategory').innerText = task.subCategory || '—';
   document.getElementById('modal-owner').innerText       = task.owner || '—';
 
-  // Milestone with date
   const milestoneDate = task.milestone ? (appState.milestones[task.milestone] || '') : '';
   document.getElementById('modal-milestone').innerText = task.milestone
     ? (milestoneDate ? `${task.milestone} (${milestoneDate})` : task.milestone)
     : '—';
 
-  // Date Completed
   const dateCompSection = document.getElementById('modal-date-completed-section');
   if (task.dateCompleted) {
     document.getElementById('modal-date-completed').innerText = task.dateCompleted;
@@ -585,7 +646,6 @@ function openModal(taskId) {
     dateCompSection.style.display = 'none';
   }
 
-  // Comments
   const notesPanel   = document.getElementById('modal-notes');
   const notesSection = document.getElementById('modal-notes-section');
   if (task.notes && task.notes.trim()) {
@@ -596,11 +656,10 @@ function openModal(taskId) {
     notesSection.style.display = 'none';
   }
 
-  // Category tag in modal header
   const tagsContainer = document.getElementById('modal-tags-container');
   tagsContainer.innerHTML = '';
   let catClass = 'tag-other';
-  if (task.category === 'House')    catClass = 'tag-house';
+  if (task.category === 'House')         catClass = 'tag-house';
   else if (task.category === 'Personal') catClass = 'tag-personal';
   else if (task.category === 'Medical')  catClass = 'tag-medical';
   else if (task.category === 'Work')     catClass = 'tag-work';
@@ -609,11 +668,107 @@ function openModal(taskId) {
   catTag.innerText = task.category;
   tagsContainer.appendChild(catTag);
 
-  document.getElementById('task-modal').classList.add('open');
+  // --- Populate edit form ---
+  document.getElementById('modal-form-title').value         = task.title;
+  document.getElementById('modal-form-category').value      = task.category;
+  document.getElementById('modal-form-subcategory').value   = task.subCategory || '';
+  document.getElementById('modal-form-owner').value         = task.owner || '';
+  document.getElementById('modal-form-priority').value      = task.priority || 'P1';
+  document.getElementById('modal-form-status').value        = task.status;
+  document.getElementById('modal-form-date-completed').value = task.dateCompleted || '';
+  document.getElementById('modal-form-notes').value         = task.notes || '';
+  populateFormMilestoneSelect(task.milestone);
+
+  modal.classList.add('open');
 }
 
 function closeModal() {
-  document.getElementById('task-modal').classList.remove('open');
+  const modal = document.getElementById('task-modal');
+  modal.classList.remove('open');
+  modal.dataset.taskId = '';
+  const win = modal.querySelector('.modal-window');
+  if (win) win.classList.remove('modal-editing', 'modal-adding');
+  const confirm = document.getElementById('modal-delete-confirm');
+  if (confirm) confirm.style.display = 'none';
+}
+
+function openAddTaskModal() {
+  const modal = document.getElementById('task-modal');
+  const win = modal.querySelector('.modal-window');
+
+  modal.dataset.taskId = '';
+  win.classList.add('modal-editing', 'modal-adding');
+  document.getElementById('modal-delete-confirm').style.display = 'none';
+
+  // Clear all form inputs
+  document.getElementById('modal-form-title').value          = '';
+  document.getElementById('modal-form-category').value       = 'House';
+  document.getElementById('modal-form-subcategory').value    = '';
+  document.getElementById('modal-form-owner').value          = '';
+  document.getElementById('modal-form-priority').value       = 'P1';
+  document.getElementById('modal-form-status').value         = 'To Do';
+  document.getElementById('modal-form-date-completed').value = '';
+  document.getElementById('modal-form-notes').value          = '';
+  populateFormMilestoneSelect('');
+
+  modal.classList.add('open');
+}
+
+async function saveTask() {
+  const modal  = document.getElementById('task-modal');
+  const taskId = modal.dataset.taskId;
+
+  const title         = document.getElementById('modal-form-title').value.trim();
+  const category      = document.getElementById('modal-form-category').value;
+  const subCategory   = document.getElementById('modal-form-subcategory').value.trim();
+  const owner         = document.getElementById('modal-form-owner').value;
+  const priority      = document.getElementById('modal-form-priority').value;
+  const milestone     = document.getElementById('modal-form-milestone').value;
+  const status        = document.getElementById('modal-form-status').value;
+  const dateCompleted = document.getElementById('modal-form-date-completed').value.trim();
+  const notes         = document.getElementById('modal-form-notes').value.trim();
+
+  if (!title) {
+    document.getElementById('modal-form-title').focus();
+    return;
+  }
+
+  if (!taskId) {
+    // ADD path
+    const maxId = Math.max(0, ...appState.tasks.map(t => parseInt(t.rawId) || 0));
+    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const newTask = {
+      id:            `task-new-${Date.now()}`,
+      rawId:         String(maxId + 1),
+      sheetRow:      null,
+      title, category, subCategory, owner,
+      dateSet:       today,
+      status, priority, milestone, dateCompleted, notes
+    };
+    await sheetWrite('add', null, taskToValues(newTask));
+    appState.tasks.push(newTask);
+  } else {
+    // UPDATE path
+    const idx = appState.tasks.findIndex(t => t.id === taskId);
+    if (idx === -1) return;
+    const task = appState.tasks[idx];
+    task.title = title; task.category = category; task.subCategory = subCategory;
+    task.owner = owner; task.priority = priority; task.milestone = milestone;
+    task.status = status; task.dateCompleted = dateCompleted; task.notes = notes;
+    await sheetWrite('update', task.sheetRow, taskToValues(task));
+  }
+
+  closeModal();
+  filterAndRender();
+}
+
+async function deleteTask(taskId) {
+  const task = appState.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  await sheetWrite('delete', task.sheetRow, []);
+  appState.tasks = appState.tasks.filter(t => t.id !== taskId);
+  closeModal();
+  filterAndRender();
 }
 
 // --- Kanban Drag and Drop ---
@@ -652,6 +807,7 @@ function updateTaskStatus(taskId, newStatus) {
   const idx = appState.tasks.findIndex(t => t.id === taskId);
   if (idx !== -1) {
     appState.tasks[idx].status = newStatus;
+    sheetWrite('update', appState.tasks[idx].sheetRow, taskToValues(appState.tasks[idx]));
     filterAndRender();
   }
 }
