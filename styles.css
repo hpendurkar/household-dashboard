@@ -879,7 +879,121 @@ body {
   max-width: 400px;
 }
 
-/* Responsive fixes */
+/* =============================================
+   CRUD: Danger button
+   ============================================= */
+.btn-danger {
+  background-color: #ef4444;
+  color: white;
+}
+.btn-danger:hover {
+  background-color: #dc2626;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  transform: translateY(-1px);
+}
+
+/* =============================================
+   CRUD: Modal view/edit toggle
+   ============================================= */
+
+/* Default: show view content, hide form + edit footer */
+.modal-view-content { display: block; }
+.modal-form         { display: none; }
+.modal-footer-edit  { display: none; gap: 0.75rem; }
+.modal-footer-view  { display: flex; gap: 0.75rem; }
+
+/* Edit mode — toggled by adding .modal-editing to .modal-window */
+.modal-window.modal-editing .modal-view-content { display: none; }
+.modal-window.modal-editing .modal-form         { display: block; }
+.modal-window.modal-editing .modal-footer-view  { display: none; }
+.modal-window.modal-editing .modal-footer-edit  { display: flex; }
+
+/* Add mode — no delete button needed */
+.modal-window.modal-adding #modal-delete-btn { display: none; }
+
+/* =============================================
+   CRUD: Modal footer
+   ============================================= */
+.modal-footer {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* =============================================
+   CRUD: Edit form layout
+   ============================================= */
+.modal-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.form-field-full { grid-column: 1 / -1; }
+
+.form-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+  letter-spacing: 0.05em;
+}
+
+.modal-input,
+.modal-select,
+.modal-textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  box-sizing: border-box;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+  transition: border-color var(--transition-fast);
+}
+.modal-textarea { resize: vertical; }
+.modal-input:focus,
+.modal-select:focus,
+.modal-textarea:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
+}
+
+/* =============================================
+   CRUD: Inline delete confirmation bar
+   ============================================= */
+.modal-delete-confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  color: #991b1b;
+}
+[data-theme="dark"] .modal-delete-confirm {
+  background: #450a0a;
+  border-color: #7f1d1d;
+  color: #fca5a5;
+}
+
+/* =============================================
+   Responsive fixes
+   ============================================= */
 @media (max-width: 600px) {
   body {
     padding: 16px;
@@ -910,6 +1024,10 @@ body {
   }
   
   .modal-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-form-grid {
     grid-template-columns: 1fr;
   }
 }

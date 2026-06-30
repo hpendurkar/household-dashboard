@@ -28,6 +28,9 @@
       </div>
       
       <div class="header-actions">
+        <!-- Add Task Button -->
+        <button id="add-task-btn" class="btn btn-primary">+ Add Task</button>
+
         <!-- Refresh Button -->
         <button id="refresh-btn" class="btn btn-secondary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
@@ -244,47 +247,128 @@
         </button>
       </div>
       
-      <h2 class="modal-title" id="modal-title">Task Title Here</h2>
-      
-      <div class="modal-meta-grid">
-        <div class="meta-item">
-          <span class="meta-label">Status</span>
-          <span class="meta-value" id="modal-status">To Do</span>
+      <!-- READ-ONLY VIEW -->
+      <div class="modal-view-content">
+        <h2 class="modal-title" id="modal-title">Task Title Here</h2>
+
+        <div class="modal-meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Status</span>
+            <span class="meta-value" id="modal-status">To Do</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Priority</span>
+            <span class="meta-value" id="modal-priority">—</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Date Set</span>
+            <span class="meta-value" id="modal-date-set">—</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Category</span>
+            <span class="meta-value" id="modal-category">—</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Sub-Category</span>
+            <span class="meta-value" id="modal-subcategory">—</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Owner</span>
+            <span class="meta-value" id="modal-owner">—</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Milestone</span>
+            <span class="meta-value" id="modal-milestone">—</span>
+          </div>
         </div>
-        <div class="meta-item">
-          <span class="meta-label">Priority</span>
-          <span class="meta-value" id="modal-priority">—</span>
+
+        <div class="modal-section" id="modal-date-completed-section" style="display:none;">
+          <h3 class="modal-section-title">Date Completed</h3>
+          <p class="modal-notes-area" id="modal-date-completed"></p>
         </div>
-        <div class="meta-item">
-          <span class="meta-label">Date Set</span>
-          <span class="meta-value" id="modal-date-set">—</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label">Category</span>
-          <span class="meta-value" id="modal-category">—</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label">Sub-Category</span>
-          <span class="meta-value" id="modal-subcategory">—</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label">Owner</span>
-          <span class="meta-value" id="modal-owner">—</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label">Milestone</span>
-          <span class="meta-value" id="modal-milestone">—</span>
+
+        <div class="modal-section" id="modal-notes-section">
+          <h3 class="modal-section-title">Comments</h3>
+          <p class="modal-notes-area" id="modal-notes">No comments available.</p>
         </div>
       </div>
 
-      <div class="modal-section" id="modal-date-completed-section" style="display:none;">
-        <h3 class="modal-section-title">Date Completed</h3>
-        <p class="modal-notes-area" id="modal-date-completed"></p>
+      <!-- EDIT FORM (hidden in view mode) -->
+      <div class="modal-form" id="modal-edit-form">
+        <div class="modal-form-grid">
+          <div class="form-field form-field-full">
+            <label class="form-label" for="modal-form-title">Title</label>
+            <textarea id="modal-form-title" class="modal-textarea" rows="2"></textarea>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="modal-form-category">Category</label>
+            <select id="modal-form-category" class="modal-select">
+              <option value="House">House</option>
+              <option value="Personal">Personal</option>
+              <option value="Medical">Medical</option>
+              <option value="Work">Work</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="modal-form-subcategory">Sub-Category</label>
+            <input type="text" id="modal-form-subcategory" class="modal-input" placeholder="e.g. Plumbing">
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="modal-form-owner">Owner</label>
+            <select id="modal-form-owner" class="modal-select">
+              <option value="">Unassigned</option>
+              <option value="Minu">Minu</option>
+              <option value="Hrishi">Hrishi</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="modal-form-priority">Priority</label>
+            <select id="modal-form-priority" class="modal-select">
+              <option value="P0">P0</option>
+              <option value="P1">P1</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="modal-form-milestone">Milestone</label>
+            <select id="modal-form-milestone" class="modal-select">
+              <option value="">None</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="modal-form-status">Status</label>
+            <select id="modal-form-status" class="modal-select">
+              <option value="To Do">To Do</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="modal-form-date-completed">Date Completed</label>
+            <input type="text" id="modal-form-date-completed" class="modal-input" placeholder="e.g. Jun 15, 2026">
+          </div>
+          <div class="form-field form-field-full">
+            <label class="form-label" for="modal-form-notes">Comments</label>
+            <textarea id="modal-form-notes" class="modal-textarea" rows="3"></textarea>
+          </div>
+        </div>
       </div>
 
-      <div class="modal-section" id="modal-notes-section">
-        <h3 class="modal-section-title">Comments</h3>
-        <p class="modal-notes-area" id="modal-notes">No comments available.</p>
+      <!-- MODAL FOOTER -->
+      <div class="modal-footer">
+        <div class="modal-footer-view">
+          <button id="modal-delete-btn" class="btn btn-danger">Delete</button>
+          <button id="modal-edit-btn" class="btn btn-primary">Edit</button>
+        </div>
+        <div class="modal-footer-edit">
+          <button id="modal-cancel-btn" class="btn btn-secondary">Cancel</button>
+          <button id="modal-save-btn" class="btn btn-primary">Save</button>
+        </div>
+        <div class="modal-delete-confirm" id="modal-delete-confirm" style="display:none;">
+          <span>Delete this task permanently?</span>
+          <button id="modal-confirm-delete-btn" class="btn btn-danger">Yes, Delete</button>
+          <button id="modal-cancel-delete-btn" class="btn btn-secondary">Cancel</button>
+        </div>
       </div>
     </div>
   </div>
