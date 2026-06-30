@@ -386,11 +386,15 @@ function taskToValues(task) {
 
 async function sheetWrite(action, rowIndex, values) {
   if (!GAS_URL) return; // no-op until GAS is deployed
-  await fetch(GAS_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: JSON.stringify({ action, row: rowIndex, values })
+  // GAS Web Apps redirect POST requests (302), which causes browsers to drop the
+  // POST body before following the redirect. Sending data as GET query params
+  // avoids this — params survive the redirect intact.
+  const params = new URLSearchParams({
+    action,
+    row: rowIndex !== null && rowIndex !== undefined ? String(rowIndex) : '',
+    values: JSON.stringify(values)
   });
+  await fetch(`${GAS_URL}?${params}`, { mode: 'no-cors' });
 }
 
 function populateFormMilestoneSelect(selectedValue) {
