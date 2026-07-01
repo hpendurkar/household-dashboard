@@ -377,9 +377,11 @@ function processTasksFromCSV(lines) {
 // --- Sheet Write Helpers ---
 function taskToValues(task) {
   // Column order must match the sheet: ID, Category, SubCategory, Task Description, Owner, Date Set, Status, Priority, Milestone, Date Completed, Comments
+  // The sheet uses "Not Started" where the dashboard displays "To Do" — map back on write.
+  const sheetStatus = task.status === 'To Do' ? 'Not Started' : task.status;
   return [
     task.rawId, task.category, task.subCategory, task.title,
-    task.owner, task.dateSet, task.status, task.priority,
+    task.owner, task.dateSet, sheetStatus, task.priority,
     task.milestone, task.dateCompleted, task.notes
   ];
 }
